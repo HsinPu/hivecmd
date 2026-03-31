@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HiveCmd Web UI</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; }
+    .header { background: #161b22; padding: 16px 24px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { color: #58a6ff; font-size: 20px; }
+    .header .status { display: flex; gap: 16px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3fb950; }
+    .status-dot.offline { background: #f85149; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+    .card h2 { color: #8b949e; font-size: 14px; text-transform: uppercase; margin-bottom: 12px; }
+    .agent-list { list-style: none; }
+    .agent-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #30363d; }
+    .agent-item:last-child { border-bottom: none; }
+    .agent-name { color: #58a6ff; font-weight: 500; }
+    .agent-status { padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+    .agent-status.active { background: #238636; color: #fff; }
+    .agent-status.idle { background: #30363d; }
+    .task-list { list-style: none; }
+    .task-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #30363d; }
+    .task-id { color: #8b949e; font-family: monospace; }
+    .task-desc { color: #c9d1d9; }
+    .task-status { padding: 2px 8px; border-radius: 12px; font-size: 12px; }
+    .task-status.pending { background: #30363d; }
+    .task-status.in_progress { background: #9e6a03; }
+    .task-status.completed { background: #238636; }
+    .btn { background: #238636; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+    .btn:hover { background: #2ea043; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

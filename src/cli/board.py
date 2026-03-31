@@ -9,31 +9,23 @@ console = Console()
 
 @board_app.command("show", help="顯示團隊狀態")
 def show(team: str = typer.Argument(..., help="團隊名")):
-    """顯示團隊即時狀態"""
     config = Config()
     state = config.load_state(team)
     
-    console.print(f"\n[bold cyan]📊 {team} 團隊狀態[/bold cyan]\n")
+    console.print(f"\n📊 {team} 團隊狀態\n")
     
-    # Agent 表格
     agents = state.get("agents", [])
     if agents:
         table = Table(title="Agents")
         table.add_column("名稱", style="cyan")
         table.add_column("狀態", style="yellow")
         table.add_column("任務", style="blue")
-        
         for a in agents:
-            table.add_row(
-                a.get("name", "-"),
-                a.get("status", "idle"),
-                a.get("task", "-")[:30] + "..." if a.get("task") else "-"
-            )
+            table.add_row(a.get("name", "-"), a.get("status", "idle"), a.get("task", "-")[:30] or "-")
         console.print(table)
     else:
         console.print("[yellow]無 Agents[/yellow]")
     
-    # 任務表格
     tasks = state.get("tasks", [])
     if tasks:
         console.print()
@@ -41,30 +33,12 @@ def show(team: str = typer.Argument(..., help="團隊名")):
         task_table.add_column("ID", style="cyan")
         task_table.add_column("描述", style="blue")
         task_table.add_column("狀態", style="green")
-        task_table.add_column("負責人", style="yellow")
-        
         for t in tasks:
-            task_table.add_row(
-                t.get("id", "-"),
-                t.get("description", "-")[:30],
-                t.get("status", "pending"),
-                t.get("owner", "-")
-            )
+            task_table.add_row(t.get("id", "-"), t.get("description", "-")[:30], t.get("status", "pending"))
         console.print(task_table)
-    
-    # Tmux 會話
-    try:
-        from ..spawn.tmux import TmuxManager
-        tm = TmuxManager()
-        sessions = tm.list_team_sessions(team)
-        if sessions:
-            console.print(f"\n[dim]Tmux 會話: {', '.join(sessions)}[/dim]")
-    except:
-        pass
 
 @board_app.command("attach", help="附著到 tmux")
 def attach(team: str = typer.Argument(..., help="團隊名")):
-    """附著到團隊的 tmux 會話"""
     try:
         from ..spawn.tmux import TmuxManager
         tm = TmuxManager()
@@ -76,8 +50,8 @@ def attach(team: str = typer.Argument(..., help="團隊名")):
 def serve(port: int = typer.Option(8080, "--port", "-p", help="端口")):
     """啟動 Web 監控面板"""
     try:
-        from ..board.web import WebUI
-        web = WebUI(port)
-        web.start()
+        from ..board.web import start_web_ui
+        start_web_ui(port)
+        console.print(f"[green]🌐 Web UI: http://localhost:{port}[/green]")
     except Exception as e:
         console.print(f"[red]Web UI 啟動失敗: {e}[/red]")
