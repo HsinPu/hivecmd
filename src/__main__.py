@@ -30,7 +30,7 @@ def init():
     console.print("[green]HiveCmd 初始化完成[/green]")
 
 @app.command()
-def status(team: str = None):
+def status(team: str = typer.Argument(None, help="團隊名")):
     from .core.config import Config
     config = Config()
     if team:
