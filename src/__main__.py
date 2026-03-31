@@ -10,6 +10,7 @@ from .cli.mcp import mcp_app
 from .cli.gource import gource_app
 from .cli.team_templates import team_templates_app
 from .cli.lifecycle import lifecycle_app
+from .cli.agent import agent_app
 
 app = typer.Typer(name="hivecmd", help="HiveCmd - Agent Swarm Intelligence CLI")
 
@@ -23,6 +24,7 @@ app.add_typer(mcp_app, name="mcp")
 app.add_typer(gource_app, name="gource")
 app.add_typer(team_templates_app, name="templates")
 app.add_typer(lifecycle_app, name="lifecycle")
+app.add_typer(agent_app, name="agent")
 
 from rich.console import Console
 console = Console()
