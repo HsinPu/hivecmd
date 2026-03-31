@@ -1,12 +1,12 @@
 """HiveCmd - Agent Swarm Intelligence CLI"""
 import typer
-from rich.console import Console
 from .cli.team import team_app
 from .cli.spawn import spawn_app
 from .cli.board import board_app
 from .cli.task import task_app
 from .cli.inbox import inbox_app
 from .cli.preset import preset_app
+from .cli.mcp import mcp_app
 
 app = typer.Typer(name="hivecmd", help="HiveCmd - Agent Swarm Intelligence CLI")
 
@@ -16,7 +16,9 @@ app.add_typer(board_app, name="board")
 app.add_typer(task_app, name="task")
 app.add_typer(inbox_app, name="inbox")
 app.add_typer(preset_app, name="preset")
+app.add_typer(mcp_app, name="mcp")
 
+from rich.console import Console
 console = Console()
 
 @app.command()
