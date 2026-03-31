@@ -6,6 +6,7 @@ from .cli.spawn import spawn_app
 from .cli.board import board_app
 from .cli.task import task_app
 from .cli.inbox import inbox_app
+from .cli.preset import preset_app
 
 app = typer.Typer(name="hivecmd", help="HiveCmd - Agent Swarm Intelligence CLI")
 
@@ -14,6 +15,7 @@ app.add_typer(spawn_app, name="spawn")
 app.add_typer(board_app, name="board")
 app.add_typer(task_app, name="task")
 app.add_typer(inbox_app, name="inbox")
+app.add_typer(preset_app, name="preset")
 
 console = Console()
 
