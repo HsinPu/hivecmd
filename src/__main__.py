@@ -7,6 +7,9 @@ from .cli.task import task_app
 from .cli.inbox import inbox_app
 from .cli.preset import preset_app
 from .cli.mcp import mcp_app
+from .cli.gource import gource_app
+from .cli.team_templates import team_templates_app
+from .cli.lifecycle import lifecycle_app
 
 app = typer.Typer(name="hivecmd", help="HiveCmd - Agent Swarm Intelligence CLI")
 
@@ -17,6 +20,9 @@ app.add_typer(task_app, name="task")
 app.add_typer(inbox_app, name="inbox")
 app.add_typer(preset_app, name="preset")
 app.add_typer(mcp_app, name="mcp")
+app.add_typer(gource_app, name="gource")
+app.add_typer(team_templates_app, name="templates")
+app.add_typer(lifecycle_app, name="lifecycle")
 
 from rich.console import Console
 console = Console()
@@ -30,7 +36,7 @@ def init():
     console.print("[green]HiveCmd 初始化完成[/green]")
 
 @app.command()
-def status(team: str = typer.Argument(None, help="團隊名")):
+def status(team: str = None):
     from .core.config import Config
     config = Config()
     if team:
