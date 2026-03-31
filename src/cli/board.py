@@ -1,4 +1,4 @@
-"""Board 命令 - 監控面板"""
+"""Board 命令 - 監控面板 (完整版)"""
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -51,15 +51,33 @@ def show(team: str = typer.Argument(..., help="團隊名")):
                 t.get("owner", "-")
             )
         console.print(task_table)
+    
+    # Tmux 會話
+    try:
+        from ..spawn.tmux import TmuxManager
+        tm = TmuxManager()
+        sessions = tm.list_team_sessions(team)
+        if sessions:
+            console.print(f"\n[dim]Tmux 會話: {', '.join(sessions)}[/dim]")
+    except:
+        pass
 
 @board_app.command("attach", help="附著到 tmux")
 def attach(team: str = typer.Argument(..., help="團隊名")):
     """附著到團隊的 tmux 會話"""
-    console.print(f"[yellow]連接到 tmux 會話: {team}[/yellow]")
-    console.print(f"[dim]提示: 使用 Ctrl+B, D 脫離[/dim]")
+    try:
+        from ..spawn.tmux import TmuxManager
+        tm = TmuxManager()
+        tm.attach_session(team)
+    except Exception as e:
+        console.print(f"[yellow]無法連接: {e}[/yellow]")
 
 @board_app.command("serve", help="啟動 Web UI")
 def serve(port: int = typer.Option(8080, "--port", "-p", help="端口")):
     """啟動 Web 監控面板"""
-    console.print(f"[green]🚀 Web 面板啟動中: http://localhost:{port}[/green]")
-    console.print(f"[dim](完整版功能)[/dim]")
+    try:
+        from ..board.web import WebUI
+        web = WebUI(port)
+        web.start()
+    except Exception as e:
+        console.print(f"[red]Web UI 啟動失敗: {e}[/red]")
