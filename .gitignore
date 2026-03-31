@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# 測試
+.pytest_cache/
+.coverage
+
+# 編譯
+*.egg-info/
+dist/
+build/
+
+# 環境
+.env
+*.log
