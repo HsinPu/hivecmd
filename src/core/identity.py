@@ -1,6 +1,6 @@
-"""Identity - Agent 身份管理"""
-from dataclasses import dataclass
-from typing import Optional
+"""Identity - Agent 身份管理 (含類型註解)"""
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Any
 
 @dataclass
 class AgentIdentity:
@@ -10,13 +10,9 @@ class AgentIdentity:
     role: str = "worker"
     status: str = "idle"
     task: Optional[str] = None
-    inbox: list = None
+    inbox: List[Dict[str, Any]] = field(default_factory=list)
     
-    def __post_init__(self):
-        if self.inbox is None:
-            self.inbox = []
-    
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             "name": self.name,
             "team": self.team,
@@ -25,3 +21,14 @@ class AgentIdentity:
             "task": self.task,
             "inbox": self.inbox
         }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AgentIdentity":
+        return cls(
+            name=data.get("name", ""),
+            team=data.get("team", ""),
+            role=data.get("role", "worker"),
+            status=data.get("status", "idle"),
+            task=data.get("task"),
+            inbox=data.get("inbox", [])
+        )

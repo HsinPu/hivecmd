@@ -1,5 +1,4 @@
-"""檔案操作工具"""
-import os
+"""檔案操作工具 (含類型註解)"""
 import shutil
 from pathlib import Path
 from typing import Optional
