@@ -1,4 +1,4 @@
-"""Leader 命令 - AI 自動協調"""
+"""Leader 命令 - 自動協調"""
 import typer
 from rich.console import Console
 from ..core.config import Config
@@ -12,7 +12,7 @@ def leader_run(
     team: str = typer.Argument(..., help="團隊名"),
     task: str = typer.Option(..., "--task", "-t", help="最終任務")
 ):
-    """Leader 會自動分析任務並協調團隊成員"""
+    """Leader 會分析任務並分配給團隊成員執行"""
     try:
         config = Config()
         state = config.load_state(team)
@@ -41,10 +41,13 @@ def leader_run(
 團隊成員: {', '.join(agent_names)}
 最終任務: {task}
 
-請規劃執行順序，只選擇需要的成員。返回 JSON 格式：
+請規劃執行順序。返回 JSON 格式：
 {{
     "order": ["成員1", "成員2", ...],
-    "reason": "簡短說明為什麼這樣安排"
+    "tasks": {{
+        "成員1": "這個成員的具體任務",
+        "成員2": "這個成員的具體任務"
+    }}
 }}
 
 只返回 JSON。"""
@@ -54,34 +57,55 @@ def leader_run(
             {"role": "user", "content": plan_prompt}
         ])
         
-        console.print(f"[green]✅ Leader 規劃完成[/green]")
-        console.print(f"[dim]{plan_result[:200]}...[/dim]\n")
+        # 解析規劃
+        import re, json
+        match = re.search(r'\{[\s\S]*\}', plan_result)
+        if match:
+            plan = json.loads(match.group())
+            order = plan.get("order", agent_names[:3])
+            tasks_map = plan.get("tasks", {})
+        else:
+            order = agent_names[:3]
+            tasks_map = {a: f"幫忙完成任務: {task}" for a in order}
         
-        # 執行規劃
-        console.print("[yellow]▶ 開始執行...[/yellow]")
+        console.print(f"[green]✅ 規劃完成: {' → '.join(order)}[/green]\n")
         
-        # 直接讓 Leader 執行完整任務（包含調度）
-        execute_prompt = f"""你是一個團隊的 Leader。請執行以下任務：
+        # 執行規劃 - 真的呼叫每個 Agent
+        for i, agent in enumerate(order):
+            console.print(f"\n[yellow]▶ 第 {i+1}/{len(order)}: {agent}[/yellow]")
+            
+            agent_task = tasks_map.get(agent, f"幫忙完成: {task}")
+            
+            # 呼叫對應的 Agent 執行任務
+            # 這裡我們用 LLM 模擬那個 Agent 執行
+            execute_prompt = f"""你是 {agent}。請根據以下任務執行：
 
-團隊成員: {', '.join(agent_names)}
 最終任務: {task}
+你的專屬任務: {agent_task}
 
-你已經分析了任務，請現在直接執行。可以呼叫團隊成員幫忙。
+請執行你的部分工作。"""
 
-直接開始執行任務，不要問問題。"""
-
-        result = llm.chat([
-            {"role": "system", "content": "你是一個專業的 AI Leader，擅長協調團隊完成任務。直接執行，不要問問題。"},
-            {"role": "user", "content": execute_prompt}
-        ])
+            result = llm.chat([
+                {"role": "system", "content": f"你是一個專業的 {agent}。"},
+                {"role": "user", "content": execute_prompt}
+            ])
+            
+            if result:
+                console.print(f"[green]✅ {agent} 完成[/green]")
+                console.print(f"[dim]{result[:150]}...[/dim]")
+                
+                # 更新 Agent 狀態
+                for a in state.get("agents", []):
+                    if a.get("name") == agent:
+                        a["status"] = "completed"
+                        a["result"] = result
+            else:
+                console.print(f"[red]❌ {agent} 失敗[/red]")
         
-        console.print(f"\n[green]✅ 執行完成:[/green]")
-        console.print(result[:500] if len(result) > 500 else result)
-        
-        # 更新狀態
-        for a in state.get("agents", []):
-            a["status"] = "completed"
         config.save_state(team, state)
+        
+        console.print(f"\n[green]✅ 全部完成！[/green]")
+        console.print(f"[dim]共 {len(order)} 個 Agent 已執行[/dim]")
         
     except Exception as e:
         console.print(f"[red]❌ 錯誤: {e}[/red]")

@@ -6,24 +6,24 @@ AI Agent Swarm Intelligence CLI - One Command → Full Automation
 
 14 個 CLI 命令，支援 AI 多 Agent 協作：
 
-### 基本
-- `init` - 初始化專案
-- `status` - 查看狀態
+### 團隊管理
 - `team create/list/show` - 團隊管理
+- `templates create` - 從模板建立團隊
+- `agent create` - AI 分析需求自動建立團隊
 
 ### 生成 & 執行
 - `spawn agent` - 生成 Agent (可選 --llm 使用 LLM 執行)
 - `spawn task` - 建立任務
+- `leader run` - **Leader 自動協調團隊** ⭐
 
 ### 監控 & 協調
 - `board show/serve` - 監控面板
 - `task list/update` - 任務管理
 - `inbox send/receive` - Agent 間訊息
 
-### 自動化
-- `agent create` - AI 自動建立團隊 (使用 LLM)
-- `templates create` - 從模板建立團隊
-- `mcp tools` - MCP 伺服器
+### 其他
+- `preset` - 預設配置
+- `mcp` - MCP 伺服器
 - `gource run` - 可視化
 - `lifecycle` - Agent 生命週期
 
@@ -39,33 +39,28 @@ pip install -e .
 
 ## 快速開始
 
-### 方式 1：手動建立
+### 1. 建立團隊 (三種方式)
 
 ```bash
-# 建立團隊
+# 方式 1: 手動建立
 hivecmd team create my-team
 
-# 生成 Agent 並執行任務
-hivecmd spawn agent my-team -n writer -t "寫一個關於勇氣的故事" --llm
-```
-
-### 方式 2：使用模板
-
-```bash
-# 從模板建立團隊
-hivecmd templates create webapp my-webapp
+# 方式 2: 從模板建立
+hivecmd templates create webapp my-team
 hivecmd templates create research my-research
-hivecmd templates create hedge-fund my-fund
+
+# 方式 3: AI 分析建立
+hivecmd agent create "建立一个写小说的团队"
 ```
 
-### 方式 3：AI 自動建立
+### 2. 執行任務
 
 ```bash
-# 設定 API Key
-export HIVECMD_LLM_API_KEY=your-key
+# 單一 Agent 執行
+hivecmd spawn agent my-team -n writer -t "寫一個故事" --llm
 
-# AI 分析需求並建立團隊
-hivecmd agent create "帮我建立一个做机器学习的团队"
+# Leader 自動協調 (自動分配給團隊成員) ⭐
+hivecmd leader run my-team -t "完成一個小說"
 ```
 
 ## LLM 執行
@@ -73,10 +68,21 @@ hivecmd agent create "帮我建立一个做机器学习的团队"
 ```bash
 # 設定 API Key (OpenRouter)
 export HIVECMD_LLM_API_KEY=sk-or-v1-xxx
-export HIVECMD_LLM_MODEL=openai/gpt-4o-mini
 
-# 生成 Agent 並讓 LLM 執行任務
-hivecmd spawn agent my-team -n worker1 -t "寫一個短篇故事" --llm
+# 執行任務
+hivecmd spawn agent my-team -n worker -t "任務" --llm
+```
+
+## Leader 功能 ⭐
+
+Leader 會自動：
+1. 分析任務
+2. 規劃執行順序
+3. 分配給團隊成員執行
+4. 監控完成
+
+```bash
+hivecmd leader run 小說創作團隊 -t "完成時光之門小說"
 ```
 
 ## 環境變數
@@ -91,12 +97,11 @@ HIVECMD_LLM_BASE_URL=https://openrouter.ai/api/v1
 
 - 🚀 多 Agent 組隊協作
 - 🤖 內建 LLM 執行 (--llm)
-- 📋 智慧任務分配 + 依賴管理
-- 💬 Agent 間訊息協調
-- 📊 Web UI 監控面板
-- 📦 團隊模板 (webapp, research, hedge-fund)
-- 🔄 Git Worktree 隔離
-- 📱 Tmux 會話管理
+- 👑 Leader 自動協調 ⭐
+- 📋 智慧任務分配
+- 💬 Agent 間訊息
+- 📊 Web UI 監控
+- 📦 團隊模板
 
 ## 與 ClawTeam 比較
 
@@ -104,7 +109,8 @@ HIVECMD_LLM_BASE_URL=https://openrouter.ai/api/v1
 |------|----------|---------|
 | 功能覆蓋 | 100% | 100% |
 | 程式碼精簡 | 9,070 KB | ~50 KB |
-| 內建 LLM | ❌ | ✅ (--llm) |
+| 內建 LLM | ❌ | ✅ |
+| Leader 協調 | 需要外部 Claude | 內建 ⭐ |
 | Stars | 4,174 | 🆕 |
 
 ## 技術
