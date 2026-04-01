@@ -169,36 +169,32 @@ def leader_run(
             
             agent_task = tasks_map.get(agent, f"幫忙完成: {task}")
             
-            # 讀取 Agent 的 prompt.md
+            # 讀取 Agent 的 prompt.md → 放到 system prompt ⭐
             agent_prompt = get_prompt(team, agent)
             
             if agent_prompt:
                 console.print(f"[dim]📖 讀取 prompt: {agent}.md[/dim]")
             
+            # User prompt 只放任務相關資訊
             if previous_output:
-                user_prompt = f"""## 你的 Prompt
-{agent_prompt}
-
-## 任務
+                user_prompt = f"""## 任務
 最終任務: {task}
 你的專屬任務: {agent_task}
 
 ## 前面的輸出
 {previous_output}
 
-請繼續工作並將結果傳給下一個成員。"""
+請根據你的角色執行任務，並將結果傳給下一個成員。"""
             else:
-                user_prompt = f"""## 你的 Prompt
-{agent_prompt}
-
-## 任務
+                user_prompt = f"""## 任務
 最終任務: {task}
 你的專屬任務: {agent_task}
 
 請執行你的部分。"""
 
+            # System prompt 包含 agent 的 prompt.md ⭐
             result = llm.chat([
-                {"role": "system", "content": f"你是專業的 {agent}。"},
+                {"role": "system", "content": f"{agent_prompt}"},
                 {"role": "user", "content": user_prompt}
             ])
             
@@ -220,7 +216,7 @@ def leader_run(
                     console.print(f"[yellow]⚠️ 需改進: {eval_result[:60]}...[/yellow]")
                     
                     retry_result = llm.chat([
-                        {"role": "system", "content": f"你是專業的 {agent}。"},
+                        {"role": "system", "content": agent_prompt},
                         {"role": "user", "content": f"結果需改進: {eval_result}\n任務: {agent_task}\n請改進"}
                     ])
                     
