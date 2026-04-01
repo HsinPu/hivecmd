@@ -8,6 +8,15 @@ class LLMService:
         self.api_key = os.environ.get("HIVECMD_LLM_API_KEY")
         self.model = os.environ.get("HIVECMD_LLM_MODEL") or "openai/gpt-4o-mini"
         self.base_url = os.environ.get("HIVECMD_LLM_BASE_URL") or "https://openrouter.ai/api/v1"
+        self.skills_dir = os.path.join(os.path.dirname(__file__), "..", "skills")
+    
+    def get_skill(self, skill_name: str) -> str:
+        """讀取 SKILL.md 檔案"""
+        skill_path = os.path.join(self.skills_dir, skill_name, "SKILL.md")
+        if os.path.exists(skill_path):
+            with open(skill_path, "r", encoding="utf-8") as f:
+                return f.read()
+        return ""
     
     def chat(self, messages: List[Dict]) -> str:
         """發送聊天請求"""
@@ -34,45 +43,34 @@ class LLMService:
         return ""
     
     def analyze_team_need(self, user_request: str) -> Dict:
-        """AI 分析團隊需求 - 使用 agent-creator-design 規則"""
-        system_prompt = """你是團隊規劃師，專精於設計高效的 AI Agent。
+        """AI 分析團隊需求 - 動態讀取 SKILL.md"""
+        # 讀取 agent-creator-design skill
+        skill_content = self.get_skill("agent-creator-design")
+        
+        system_prompt = f"""你是團隊規劃師，專精於設計高效的 AI Agent。
 
-請根據用戶需求返回 JSON 格式的團隊配置。
+## 設計規則 (來自 SKILL.md)
 
-## 設計規則 (agent-creator-design)
+{skill_content}
 
-每個 Agent 必須遵循以下設計原則：
+## 你的任務
 
-### 1. 單一職責
-- 每個 Agent 只定義一個角色或一類任務
-- 避免「什麼都能做」的通用型描述
+根據用戶需求，返回 JSON 格式的團隊配置。
 
-### 2. 四大項結構
-每個 Agent 的設定必須包含：
-- **Role (角色)**: 一句話定義「你是誰」
-- **Task (任務)**: 要完成的具體工作
-- **Constraints (規範)**: 必須遵守的規則
-- **Output (輸出)**: 產出形式與格式
-
-### 3. 命名規範
-- 使用 lowercase + hyphen (如 story-writer, character-designer)
-- 名稱語意清楚，長度適中
-
-## 返回格式
-
+返回格式：
 ```json
-{
+{{
   "template": "模板名稱",
-  "team_name": "團隊名稱",
+  "team_name": "團隊名稱", 
   "description": "團隊描述",
   "agents": [
-    {
+    {{
       "name": "agent-name",
-      "role": "Agent 角色描述 (一句話)",
+      "role": "Agent 角色 (一句話)",
       "task": "Agent 的主要任務"
-    }
+    }}
   ]
-}
+}}
 ```
 
 只返回 JSON，不要其他文字。"""
