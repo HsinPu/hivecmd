@@ -1,6 +1,7 @@
 """Agent 命令 - AI 自動建立團隊"""
 import os
 import typer
+from pathlib import Path
 from rich.console import Console
 from ..services.llm import LLMService
 from ..core.config import Config
@@ -46,6 +47,28 @@ def ai_create(
         (team_dir / "agents").mkdir(exist_ok=True)
         (team_dir / "inbox").mkdir(exist_ok=True)
         
+        # ⭐ 建立 description 資料夾
+        (team_dir / "description").mkdir(exist_ok=True)
+        desc_file = team_dir / "description" / "about.md"
+        with open(desc_file, "w", encoding="utf-8") as f:
+            f.write(f"""# {team_name}
+
+## 描述
+{description}
+
+## 建立時間
+{config_data.get('created_at', 'N/A')}
+
+## 團隊成員
+{', '.join([a.get('name') for a in agents_data])}
+
+## 使用範例
+```bash
+hivecmd leader run {team_name} -t "任務描述"
+```
+""")
+        console.print(f"[dim]📝 建立: description/about.md[/dim]")
+        
         state = {
             "name": team_name,
             "description": description,
@@ -64,7 +87,7 @@ def ai_create(
             agent_dir = team_dir / "agents" / agent_name
             agent_dir.mkdir(exist_ok=True)
             
-            # 存 prompt.md ⭐
+            # 存 prompt.md
             prompt_content = f"""# {agent_name}
 
 ## 角色
@@ -89,6 +112,7 @@ def ai_create(
         config.save_state(team_name, state)
         
         console.print(f"\n[green]✅ 團隊 '{team_name}' 建立完成！[/green]")
+        console.print(f"[dim]使用: hivecmd leader run {team_name} -t '任務'[/dim]")
         
     except Exception as e:
         console.print(f"[red]❌ 錯誤: {e}[/red]")

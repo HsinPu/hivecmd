@@ -23,6 +23,14 @@ def get_prompt(name: str, prompt_type: str = "leader") -> str:
             return f.read()
     return ""
 
+def get_team_description(team_name: str) -> str:
+    """讀取團隊的 description/about.md"""
+    path = Path.home() / ".hivecmd" / "teams" / team_name / "description" / "about.md"
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    return ""
+
 def save_output(team_dir: Path, agent_name: str, result: str):
     """儲存 Agent 輸出"""
     agents_dir = team_dir / "agents"
@@ -35,36 +43,33 @@ def save_output(team_dir: Path, agent_name: str, result: str):
     return output_file
 
 def list_teams():
-    """列出所有團隊"""
+    """列出所有團隊 (讀取 description/about.md)"""
     teams_dir = Path.home() / ".hivecmd" / "teams"
     if not teams_dir.exists():
         return []
     teams = []
     for d in teams_dir.iterdir():
         if d.is_dir():
-            state_file = d / "state.json"
-            if state_file.exists():
+            # 讀取 description/about.md
+            desc_file = d / "description" / "about.md"
+            if desc_file.exists():
                 try:
-                    import json
-                    with open(state_file) as f:
-                        state = json.load(f)
-                        agents = state.get("agents", [])
-                        if agents:
-                            teams.append({
-                                "name": d.name,
-                                "agents": [a.get("name") for a in agents],
-                                "description": state.get("description", "")
-                            })
+                    with open(desc_file, "r", encoding="utf-8") as f:
+                        content = f.read()
+                        teams.append({
+                            "name": d.name,
+                            "description": content
+                        })
                 except:
                     pass
     return teams
 
 def auto_select_team(llm, task: str, teams: list) -> str:
-    """讓 LLM 自動選擇最適合的團隊"""
+    """讓 LLM 根據 description 選擇最適合的團隊"""
     if not teams:
         return None
     
-    teams_info = "\n".join([f"- {t['name']}: {t['description']} (Agents: {', '.join(t['agents'])})" for t in teams])
+    teams_info = "\n".join([f"## {t['name']}\n{t['description']}" for t in teams])
     
     prompt = f"""根據以下任務，選擇最適合的團隊：
 
@@ -73,10 +78,10 @@ def auto_select_team(llm, task: str, teams: list) -> str:
 可用團隊:
 {teams_info}
 
-只返回團隊名稱，不要其他文字。如果沒有適合的團隊，返回 "none"。"""
+只返回團隊名稱，不要其他文字。"""
 
     result = llm.chat([
-        {"role": "system", "content": "你是一個團隊選擇專家。"},
+        {"role": "system", "content": "你是一個團隊選擇專家，擅長根據團隊描述選擇最適合的團隊。"},
         {"role": "user", "content": prompt}
     ])
     
@@ -100,7 +105,7 @@ def leader_run(
             console.print("[red]❌ 請設定 API Key[/red]")
             return
         
-        # 如果沒有指定團隊，自動選擇
+        # 如果沒有指定團隊，自動選擇 (根據 description/about.md)
         if not team:
             console.print("[yellow]🔍 自動選擇最適合的團隊...[/yellow]")
             teams = list_teams()
@@ -169,7 +174,7 @@ def leader_run(
             
             agent_task = tasks_map.get(agent, f"幫忙完成: {task}")
             
-            # 讀取 Agent 的 prompt.md → 放到 system prompt ⭐
+            # 讀取 Agent 的 prompt.md → 放到 system prompt
             agent_prompt = get_prompt(team, agent)
             
             if agent_prompt:
@@ -192,7 +197,7 @@ def leader_run(
 
 請執行你的部分。"""
 
-            # System prompt 包含 agent 的 prompt.md ⭐
+            # System prompt 包含 agent 的 prompt.md
             result = llm.chat([
                 {"role": "system", "content": f"{agent_prompt}"},
                 {"role": "user", "content": user_prompt}
