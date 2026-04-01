@@ -9,12 +9,12 @@ AI Agent Swarm Intelligence CLI - One Command → Full Automation
 ### 團隊管理
 - `team create/list/show` - 團隊管理
 - `templates create` - 從模板建立團隊
-- `agent create` - AI 分析需求自動建立團隊
+- `agent create` - AI 分析需求自動建立團隊 ⭐
 
 ### 生成 & 執行
 - `spawn agent` - 生成 Agent (可選 --llm 使用 LLM 執行)
 - `spawn task` - 建立任務
-- `leader run` - **Leader 自動協調團隊** ⭐
+- `leader run` - **自動協調團隊** ⭐⭐⭐
 
 ### 監控 & 協調
 - `board show/serve` - 監控面板
@@ -26,6 +26,8 @@ AI Agent Swarm Intelligence CLI - One Command → Full Automation
 - `mcp` - MCP 伺服器
 - `gource run` - 可視化
 - `lifecycle` - Agent 生命週期
+- `init` - 初始化
+- `status` - 狀態查看
 
 ## 安裝
 
@@ -39,28 +41,53 @@ pip install -e .
 
 ## 快速開始
 
-### 1. 建立團隊 (三種方式)
+### 1. 建立團隊 (AI 自動分析)
 
 ```bash
-# 方式 1: 手動建立
-hivecmd team create my-team
-
-# 方式 2: 從模板建立
-hivecmd templates create webapp my-team
-hivecmd templates create research my-research
-
-# 方式 3: AI 分析建立
 hivecmd agent create "建立一个写小说的团队"
 ```
 
-### 2. 執行任務
+自動產生：
+- 團隊描述 (description/about.md)
+- 擅長任務 (skills)
+- 每個 Agent 的 prompt.md
+
+### 2. 執行任務 (自動選擇團隊)
 
 ```bash
-# 單一 Agent 執行
-hivecmd spawn agent my-team -n writer -t "寫一個故事" --llm
+# 不指定團隊 → 自動選擇最適合的
+hivecmd leader run --task "用繁體中文寫一篇關於環保的文章"
 
-# Leader 自動協調 (自動分配給團隊成員) ⭐
-hivecmd leader run my-team -t "完成一個小說"
+# 指定團隊
+hivecmd leader run --team 文章創作團隊 -t "寫一篇關於AI的文章"
+```
+
+## Leader 功能 ⭐⭐⭐
+
+Leader 會自動：
+
+1. **讀取 description** - 根據團隊的擅長任務選擇最適合的團隊
+2. **規劃執行順序** - 決定誰先誰後
+3. **串聯執行** - 每個 Agent 的輸出傳給下一個
+4. **即時評估** - 每個執行完立即判斷好壞
+5. **自動重做** - 不好的結果會重新執行
+
+```bash
+hivecmd leader run --task "寫一篇關於電競滑鼠推薦的文章"
+```
+
+### 團隊目錄結構
+
+```
+團隊名稱/
+├── description/
+│   └── about.md        ← 團隊描述 + 擅長任務
+├── agents/
+│   └── <agent名>/
+│       ├── prompt.md   ← Agent 的 system prompt
+│       └── output.md   ← 生成的輸出
+├── tasks/
+└── inbox/
 ```
 
 ## LLM 執行
@@ -70,19 +97,7 @@ hivecmd leader run my-team -t "完成一個小說"
 export HIVECMD_LLM_API_KEY=sk-or-v1-xxx
 
 # 執行任務
-hivecmd spawn agent my-team -n worker -t "任務" --llm
-```
-
-## Leader 功能 ⭐
-
-Leader 會自動：
-1. 分析任務
-2. 規劃執行順序
-3. 分配給團隊成員執行
-4. 監控完成
-
-```bash
-hivecmd leader run 小說創作團隊 -t "完成時光之門小說"
+hivecmd leader run --task "任務"
 ```
 
 ## 環境變數
@@ -93,25 +108,12 @@ HIVECMD_LLM_MODEL=openai/gpt-4o-mini
 HIVECMD_LLM_BASE_URL=https://openrouter.ai/api/v1
 ```
 
-## 功能特色
+## Skills
 
-- 🚀 多 Agent 組隊協作
-- 🤖 內建 LLM 執行 (--llm)
-- 👑 Leader 自動協調 ⭐
-- 📋 智慧任務分配
-- 💬 Agent 間訊息
-- 📊 Web UI 監控
-- 📦 團隊模板
+HiveCmd 使用 agent-creator-design 規範：
 
-## 與 專案 比較
-
-| 項目 | 專案 | HiveCmd |
-|------|----------|---------|
-| 功能覆蓋 | 100% | 100% |
-| 程式碼精簡 | 9,070 KB | ~50 KB |
-| 內建 LLM | ❌ | ✅ |
-| Leader 協調 | 需要外部 Claude | 內建 ⭐ |
-| Stars | 4,174 | 🆕 |
+- `src/skills/agent-creator-design/` - System Prompt 設計規範
+- `src/system-prompts/` - System Prompt 模板
 
 ## 技術
 
