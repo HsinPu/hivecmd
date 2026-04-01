@@ -1,8 +1,8 @@
-# HiveCmd Skills
+# Skills
 
 ## 概述
 
-HiveCmd 專屬技能設定
+本專案 專屬技能設定
 
 ## 技能
 
