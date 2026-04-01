@@ -8,15 +8,6 @@ class LLMService:
         self.api_key = os.environ.get("HIVECMD_LLM_API_KEY")
         self.model = os.environ.get("HIVECMD_LLM_MODEL") or "openai/gpt-4o-mini"
         self.base_url = os.environ.get("HIVECMD_LLM_BASE_URL") or "https://openrouter.ai/api/v1"
-        self.skills_dir = os.path.join(os.path.dirname(__file__), "..", "skills")
-    
-    def get_skill(self, skill_name: str) -> str:
-        """讀取 SKILL.md 檔案"""
-        skill_path = os.path.join(self.skills_dir, skill_name, "SKILL.md")
-        if os.path.exists(skill_path):
-            with open(skill_path, "r", encoding="utf-8") as f:
-                return f.read()
-        return ""
     
     def chat(self, messages: List[Dict]) -> str:
         """發送聊天請求"""
@@ -43,7 +34,7 @@ class LLMService:
         return ""
     
     def analyze_team_need(self, user_request: str) -> Dict:
-        """AI 分析團隊需求 - 動態讀取 SKILL.md"""
+        """AI 分析團隊需求 - 產生詳細的 description + skills"""
         # 讀取 agent-creator-design skill
         skill_content = self.get_skill("agent-creator-design")
         
@@ -62,7 +53,8 @@ class LLMService:
 {{
   "template": "模板名稱",
   "team_name": "團隊名稱", 
-  "description": "團隊描述",
+  "description": "團隊描述 (一句話說明團隊是做什麼的)",
+  "skills": ["擅長的任務1", "擅長的任務2", "擅長的任務3"],
   "agents": [
     {{
       "name": "agent-name",
@@ -85,7 +77,11 @@ class LLMService:
             m = re.search(r'\{[\s\S]*\}', result)
             if m:
                 try:
-                    return json.loads(m.group())
+                    data = json.loads(m.group())
+                    # 確保有 skills 欄位
+                    if "skills" not in data:
+                        data["skills"] = []
+                    return data
                 except:
                     pass
         
@@ -93,7 +89,16 @@ class LLMService:
             "template": "custom",
             "team_name": "ai-team",
             "description": "AI 團隊",
+            "skills": ["一般任務"],
             "agents": [
                 {"name": "worker", "role": "工作者", "task": "執行任務"}
             ]
         }
+    
+    def get_skill(self, skill_name: str) -> str:
+        """讀取 SKILL.md 檔案"""
+        skill_path = os.path.join(os.path.dirname(__file__), "..", "skills", skill_name, "SKILL.md")
+        if os.path.exists(skill_path):
+            with open(skill_path, "r", encoding="utf-8") as f:
+                return f.read()
+        return ""

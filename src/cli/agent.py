@@ -25,7 +25,7 @@ def ai_create(
         
         console.print(f"[cyan]🤔 分析需求: {request}[/cyan]")
         
-        # AI 分析
+        # AI 分析 - 產生更詳細的 description
         config_data = llm.analyze_team_need(request)
         
         team_name = team_name or config_data.get("team_name", "ai-team")
@@ -47,8 +47,13 @@ def ai_create(
         (team_dir / "agents").mkdir(exist_ok=True)
         (team_dir / "inbox").mkdir(exist_ok=True)
         
-        # ⭐ 建立 description 資料夾
+        # 建立 description 資料夾 - 更詳細的內容
         (team_dir / "description").mkdir(exist_ok=True)
+        
+        # 產生擅長任務列表
+        skills = config_data.get("skills", [])
+        skills_text = "\n".join([f"- {s}" for s in skills]) if skills else "無特定技能"
+        
         desc_file = team_dir / "description" / "about.md"
         with open(desc_file, "w", encoding="utf-8") as f:
             f.write(f"""# {team_name}
@@ -56,8 +61,8 @@ def ai_create(
 ## 描述
 {description}
 
-## 建立時間
-{config_data.get('created_at', 'N/A')}
+## 擅長任務
+{skills_text}
 
 ## 團隊成員
 {', '.join([a.get('name') for a in agents_data])}
