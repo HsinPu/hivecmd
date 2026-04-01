@@ -103,9 +103,9 @@ HIVECMD_LLM_BASE_URL=https://openrouter.ai/api/v1
 - 📊 Web UI 監控
 - 📦 團隊模板
 
-## 與 ClawTeam 比較
+## 與 專案 比較
 
-| 項目 | ClawTeam | HiveCmd |
+| 項目 | 專案 | HiveCmd |
 |------|----------|---------|
 | 功能覆蓋 | 100% | 100% |
 | 程式碼精簡 | 9,070 KB | ~50 KB |
