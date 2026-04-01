@@ -1,11 +1,24 @@
-"""Leader 命令 - 自動協調 (即時評估 + 串聯)"""
+"""Leader 命令 - 自動協調 (讀取 prompt.md)"""
+import os
 import typer
+import re
+import json
 from rich.console import Console
 from ..core.config import Config
 from ..services.llm import LLMService
 
 leader_app = typer.Typer(name="leader", help="Leader 自動協調")
 console = Console()
+
+def get_skill_content(skill_name: str) -> str:
+    """讀取 prompt.md"""
+    skill_path = os.path.join(
+        os.path.dirname(__file__), "..", "system-prompts", skill_name, "prompt.md"
+    )
+    if os.path.exists(skill_path):
+        with open(skill_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return ""
 
 @leader_app.command("run", help="啟動 Leader 協調")
 def leader_run(
@@ -14,6 +27,9 @@ def leader_run(
 ):
     """Leader 會分析任務並串聯執行每個 Agent，即時評估"""
     try:
+        # 讀取 Leader prompt.md
+        skill_content = get_skill_content("leader")
+        
         config = Config()
         state = config.load_state(team)
         agents = state.get("agents", [])
@@ -32,16 +48,17 @@ def leader_run(
             console.print("[red]❌ 請設定 API Key[/red]")
             return
         
-        # Leader 規劃
+        # Leader 規劃 - 使用 prompt.md
         console.print("[yellow]🤔 Leader 分析任務...[/yellow]")
         
-        plan_prompt = f"""你是一個團隊 Leader。你需要分析任務並安排執行順序。
+        plan_prompt = f"""{skill_content}
+
+## 任務資訊
 
 團隊成員: {', '.join(agent_names)}
 最終任務: {task}
 
-每個成員的輸出會傳給下一個，請安排能接續工作的順序。
-返回 JSON：
+請規劃執行順序。返回 JSON：
 {{
     "order": ["成員1", "成員2", ...],
     "tasks": {{"成員1": "任務"}}
@@ -54,7 +71,6 @@ def leader_run(
             {"role": "user", "content": plan_prompt}
         ])
         
-        import re, json
         match = re.search(r'\{[\s\S]*\}', plan_result)
         if match:
             plan = json.loads(match.group())
@@ -103,8 +119,9 @@ def leader_run(
                 console.print(f"[dim]{result[:80]}...[/dim]")
                 
                 # 即時評估
-                eval_prompt = f"""評估結果是否完成任務：
+                eval_prompt = f"""{skill_content}
 
+評估結果是否完成任務：
 任務: {task}
 {agent} 結果: {result}
 
