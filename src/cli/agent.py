@@ -1,7 +1,7 @@
 """Agent 命令 - AI 自動建立團隊"""
+import os
 import typer
 from rich.console import Console
-from rich.progress import Progress
 from ..services.llm import LLMService
 from ..core.config import Config
 
@@ -15,11 +15,10 @@ def ai_create(
 ):
     """根據自然語言需求，AI 自動判斷並建立團隊"""
     try:
-        # 初始化 LLM
         llm = LLMService()
         
         if not llm.api_key:
-            console.print("[red]❌ 請設定 API Key:[/red]")
+            console.print("[red]❌ 請設定 API Key[/red]")
             console.print("[dim]export HIVECMD_LLM_API_KEY=your-key[/dim]")
             return
         
@@ -41,6 +40,8 @@ def ai_create(
         # 建立團隊
         config = Config()
         team_dir = config.get_team_dir(team_name)
+        
+        # 建立目錄
         (team_dir / "tasks").mkdir(exist_ok=True)
         (team_dir / "agents").mkdir(exist_ok=True)
         (team_dir / "inbox").mkdir(exist_ok=True)
@@ -53,30 +54,41 @@ def ai_create(
             "tasks": []
         }
         
-        # 加入 AI 推薦的 agents
+        # 建立每個 Agent 的目錄和 prompt
         for agent in agents_data:
+            agent_name = agent.get("name")
+            agent_role = agent.get("role", "")
+            agent_task = agent.get("task", "")
+            
+            # 建立 Agent 目錄
+            agent_dir = team_dir / "agents" / agent_name
+            agent_dir.mkdir(exist_ok=True)
+            
+            # 存 prompt.md ⭐
+            prompt_content = f"""# {agent_name}
+
+## 角色
+{agent_role}
+
+## 任務
+{agent_task}
+"""
+            with open(agent_dir / "prompt.md", "w", encoding="utf-8") as f:
+                f.write(prompt_content)
+            
+            console.print(f"[dim]📝 建立: {agent_name}/prompt.md[/dim]")
+            
+            # 加入 state
             state["agents"].append({
-                "name": agent.get("name"),
-                "role": agent.get("role"),
-                "task": agent.get("task"),
+                "name": agent_name,
+                "role": agent_role,
+                "task": agent_task,
                 "status": "idle"
             })
         
         config.save_state(team_name, state)
         
         console.print(f"\n[green]✅ 團隊 '{team_name}' 建立完成！[/green]")
-        console.print(f"[dim]使用 hivecmd board show {team_name} 查看[/dim]")
         
     except Exception as e:
         console.print(f"[red]❌ 錯誤: {e}[/red]")
-
-@agent_app.command("config", help="設定 API")
-def config_api(
-    api_key: str = typer.Option(..., "--key", "-k", help="API Key"),
-    model: str = typer.Option("openai/gpt-4o-mini", "--model", "-m", help="模型")
-):
-    """設定 API Key"""
-    import os
-    os.environ["HIVECMD_LLM_API_KEY"] = api_key
-    os.environ["HIVECMD_LLM_MODEL"] = model
-    console.print(f"[green]✅ API 已設定: {model}[/green]")

@@ -3,6 +3,7 @@ import os
 import typer
 import re
 import json
+from pathlib import Path
 from rich.console import Console
 from ..core.config import Config
 from ..services.llm import LLMService
@@ -10,62 +11,126 @@ from ..services.llm import LLMService
 leader_app = typer.Typer(name="leader", help="Leader 自動協調")
 console = Console()
 
-def get_skill_content(skill_name: str) -> str:
+def get_prompt(name: str, prompt_type: str = "leader") -> str:
     """讀取 prompt.md"""
-    skill_path = os.path.join(
-        os.path.dirname(__file__), "..", "system-prompts", skill_name, "prompt.md"
-    )
-    if os.path.exists(skill_path):
-        with open(skill_path, "r", encoding="utf-8") as f:
+    if prompt_type == "leader":
+        path = Path(__file__).parent.parent / "system-prompts" / name / "prompt.md"
+    else:
+        path = Path(__file__).parent.parent.parent / ".hivecmd" / "teams" / name / "agents" / prompt_type / "prompt.md"
+    
+    if path.exists():
+        with open(path, "r", encoding="utf-8") as f:
             return f.read()
     return ""
 
-def save_agent_output(team_dir: str, agent_name: str, result: str):
-    """儲存 Agent 輸出到 agents/ 目錄"""
-    agents_dir = os.path.join(team_dir, "agents")
-    os.makedirs(agents_dir, exist_ok=True)
+def save_output(team_dir: Path, agent_name: str, result: str):
+    """儲存 Agent 輸出"""
+    agents_dir = team_dir / "agents"
+    (agents_dir / agent_name).mkdir(exist_ok=True)
     
-    # 建立 md 檔案
-    output_file = os.path.join(agents_dir, f"{agent_name}.md")
+    output_file = agents_dir / agent_name / "output.md"
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(result)
     
     return output_file
 
+def list_teams():
+    """列出所有團隊"""
+    teams_dir = Path.home() / ".hivecmd" / "teams"
+    if not teams_dir.exists():
+        return []
+    teams = []
+    for d in teams_dir.iterdir():
+        if d.is_dir():
+            state_file = d / "state.json"
+            if state_file.exists():
+                try:
+                    import json
+                    with open(state_file) as f:
+                        state = json.load(f)
+                        agents = state.get("agents", [])
+                        if agents:
+                            teams.append({
+                                "name": d.name,
+                                "agents": [a.get("name") for a in agents],
+                                "description": state.get("description", "")
+                            })
+                except:
+                    pass
+    return teams
+
+def auto_select_team(llm, task: str, teams: list) -> str:
+    """讓 LLM 自動選擇最適合的團隊"""
+    if not teams:
+        return None
+    
+    teams_info = "\n".join([f"- {t['name']}: {t['description']} (Agents: {', '.join(t['agents'])})" for t in teams])
+    
+    prompt = f"""根據以下任務，選擇最適合的團隊：
+
+任務: {task}
+
+可用團隊:
+{teams_info}
+
+只返回團隊名稱，不要其他文字。如果沒有適合的團隊，返回 "none"。"""
+
+    result = llm.chat([
+        {"role": "system", "content": "你是一個團隊選擇專家。"},
+        {"role": "user", "content": prompt}
+    ])
+    
+    for t in teams:
+        if t["name"] in result:
+            return t["name"]
+    
+    return teams[0]["name"] if teams else None
+
 @leader_app.command("run", help="啟動 Leader 協調")
 def leader_run(
-    team: str = typer.Argument(..., help="團隊名"),
-    task: str = typer.Option(..., "--task", "-t", help="最終任務")
+    team: str = typer.Option(None, "--team", help="團隊名稱 (可選)"),
+    task: str = typer.Option(..., "--task", "-T", help="最終任務")
 ):
     """Leader 會分析任務並串聯執行每個 Agent，即時評估"""
     try:
-        # 讀取 Leader prompt
-        prompt_content = get_skill_content("leader")
-        
         config = Config()
-        state = config.load_state(team)
-        agents = state.get("agents", [])
-        
-        if not agents:
-            console.print("[red]❌ 團隊沒有 Agent[/red]")
-            return
-        
-        agent_names = [a.get("name") for a in agents]
-        team_dir = config.get_team_dir(team)
-        
-        console.print(f"[cyan]🤖 啟動 Leader: {team}[/cyan]")
-        console.print(f"[dim]任務: {task}[/dim]\n")
-        
         llm = LLMService()
         
         if not llm.api_key:
             console.print("[red]❌ 請設定 API Key[/red]")
             return
         
+        # 如果沒有指定團隊，自動選擇
+        if not team:
+            console.print("[yellow]🔍 自動選擇最適合的團隊...[/yellow]")
+            teams = list_teams()
+            if not teams:
+                console.print("[red]❌ 沒有可用的團隊[/red]")
+                return
+            
+            team = auto_select_team(llm, task, teams)
+            console.print(f"[green]✅ 選擇團隊: {team}[/green]")
+        
+        # 讀取 Leader prompt
+        leader_prompt = get_prompt("leader", "leader")
+        
+        state = config.load_state(team)
+        agents = state.get("agents", [])
+        
+        if not agents:
+            console.print(f"[red]❌ 團隊 '{team}' 沒有 Agent[/red]")
+            return
+        
+        agent_names = [a.get("name") for a in agents]
+        team_dir = config.get_team_dir(team)
+        
+        console.print(f"\n[cyan]🤖 啟動 Leader: {team}[/cyan]")
+        console.print(f"[dim]任務: {task}[/dim]\n")
+        
         # Leader 規劃
         console.print("[yellow]🤔 Leader 分析任務...[/yellow]")
         
-        plan_prompt = f"""{prompt_content}
+        plan_prompt = f"""{leader_prompt}
 
 ## 任務資訊
 
@@ -96,7 +161,7 @@ def leader_run(
         
         console.print(f"[green]✅ 規劃: {' → '.join(order)}[/green]\n")
         
-        # 串聯執行 + 即時評估
+        # 串聯執行
         previous_output = ""
         
         for i, agent in enumerate(order):
@@ -104,20 +169,29 @@ def leader_run(
             
             agent_task = tasks_map.get(agent, f"幫忙完成: {task}")
             
-            # 加入之前的輸出
+            # 讀取 Agent 的 prompt.md
+            agent_prompt = get_prompt(team, agent)
+            
+            if agent_prompt:
+                console.print(f"[dim]📖 讀取 prompt: {agent}.md[/dim]")
+            
             if previous_output:
-                execute_prompt = f"""你是 {agent}。請根據以下任務執行：
+                user_prompt = f"""## 你的 Prompt
+{agent_prompt}
 
+## 任務
 最終任務: {task}
 你的專屬任務: {agent_task}
 
-前面成員的結果:
+## 前面的輸出
 {previous_output}
 
 請繼續工作並將結果傳給下一個成員。"""
             else:
-                execute_prompt = f"""你是 {agent}。請根據以下任務執行：
+                user_prompt = f"""## 你的 Prompt
+{agent_prompt}
 
+## 任務
 最終任務: {task}
 你的專屬任務: {agent_task}
 
@@ -125,56 +199,36 @@ def leader_run(
 
             result = llm.chat([
                 {"role": "system", "content": f"你是專業的 {agent}。"},
-                {"role": "user", "content": execute_prompt}
+                {"role": "user", "content": user_prompt}
             ])
             
             if result:
                 console.print(f"[green]✅ 完成[/green]")
-                console.print(f"[dim]{result[:80]}...[/dim]")
+                console.print(f"[dim]{result[:60]}...[/dim]")
                 
-                # 儲存結果到 agents/ 目錄 ⭐
-                output_file = save_agent_output(team_dir, agent, result)
-                console.print(f"[dim]💾 已儲存: {output_file}[/dim]")
+                # 儲存輸出
+                output_file = save_output(team_dir, agent, result)
+                console.print(f"[dim]💾 輸出: {agent}/output.md[/dim]")
                 
                 # 即時評估
-                eval_prompt = f"""{prompt_content}
-
-評估結果是否完成任務：
-任務: {task}
-{agent} 結果: {result}
-
-回复 "ok" 如果完成，或简短说明需要改进。"""
-
                 eval_result = llm.chat([
                     {"role": "system", "content": "即时评估。"},
-                    {"role": "user", "content": eval_prompt}
+                    {"role": "user", "content": f"評估: {task}\n{agent} 結果: {result}\n回复 ok 或改進建議"}
                 ])
                 
                 if "ok" not in eval_result.lower() or len(eval_result) > 30:
-                    console.print(f"[yellow]⚠️ 需改進: {eval_result[:80]}...[/yellow]")
+                    console.print(f"[yellow]⚠️ 需改進: {eval_result[:60]}...[/yellow]")
                     
-                    # 重新執行
-                    retry_prompt = f"""你是 {agent}。結果需要改進：
-{eval_result}
-
-任務: {agent_task}
-之前的輸出: {previous_output}
-
-請改進。"""
-
                     retry_result = llm.chat([
                         {"role": "system", "content": f"你是專業的 {agent}。"},
-                        {"role": "user", "content": retry_prompt}
+                        {"role": "user", "content": f"結果需改進: {eval_result}\n任務: {agent_task}\n請改進"}
                     ])
                     
                     if retry_result:
                         console.print(f"[green]✅ 重新完成[/green]")
                         result = retry_result
-                        # 重新儲存
-                        output_file = save_agent_output(team_dir, agent, result)
-                        console.print(f"[dim]💾 已更新: {output_file}[/dim]")
+                        output_file = save_output(team_dir, agent, result)
                 
-                # 串聯輸出
                 previous_output = result
                 
                 # 更新狀態
