@@ -1,4 +1,4 @@
-"""Leader 命令 - 自動協調 (讀取 prompt.md)"""
+"""Leader 命令 - 自動協調"""
 import os
 import typer
 import re
@@ -20,6 +20,18 @@ def get_skill_content(skill_name: str) -> str:
             return f.read()
     return ""
 
+def save_agent_output(team_dir: str, agent_name: str, result: str):
+    """儲存 Agent 輸出到 agents/ 目錄"""
+    agents_dir = os.path.join(team_dir, "agents")
+    os.makedirs(agents_dir, exist_ok=True)
+    
+    # 建立 md 檔案
+    output_file = os.path.join(agents_dir, f"{agent_name}.md")
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write(result)
+    
+    return output_file
+
 @leader_app.command("run", help="啟動 Leader 協調")
 def leader_run(
     team: str = typer.Argument(..., help="團隊名"),
@@ -27,8 +39,8 @@ def leader_run(
 ):
     """Leader 會分析任務並串聯執行每個 Agent，即時評估"""
     try:
-        # 讀取 Leader prompt.md
-        skill_content = get_skill_content("leader")
+        # 讀取 Leader prompt
+        prompt_content = get_skill_content("leader")
         
         config = Config()
         state = config.load_state(team)
@@ -39,6 +51,8 @@ def leader_run(
             return
         
         agent_names = [a.get("name") for a in agents]
+        team_dir = config.get_team_dir(team)
+        
         console.print(f"[cyan]🤖 啟動 Leader: {team}[/cyan]")
         console.print(f"[dim]任務: {task}[/dim]\n")
         
@@ -48,10 +62,10 @@ def leader_run(
             console.print("[red]❌ 請設定 API Key[/red]")
             return
         
-        # Leader 規劃 - 使用 prompt.md
+        # Leader 規劃
         console.print("[yellow]🤔 Leader 分析任務...[/yellow]")
         
-        plan_prompt = f"""{skill_content}
+        plan_prompt = f"""{prompt_content}
 
 ## 任務資訊
 
@@ -118,8 +132,12 @@ def leader_run(
                 console.print(f"[green]✅ 完成[/green]")
                 console.print(f"[dim]{result[:80]}...[/dim]")
                 
+                # 儲存結果到 agents/ 目錄 ⭐
+                output_file = save_agent_output(team_dir, agent, result)
+                console.print(f"[dim]💾 已儲存: {output_file}[/dim]")
+                
                 # 即時評估
-                eval_prompt = f"""{skill_content}
+                eval_prompt = f"""{prompt_content}
 
 評估結果是否完成任務：
 任務: {task}
@@ -152,6 +170,9 @@ def leader_run(
                     if retry_result:
                         console.print(f"[green]✅ 重新完成[/green]")
                         result = retry_result
+                        # 重新儲存
+                        output_file = save_agent_output(team_dir, agent, result)
+                        console.print(f"[dim]💾 已更新: {output_file}[/dim]")
                 
                 # 串聯輸出
                 previous_output = result
